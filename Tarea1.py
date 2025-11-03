@@ -3,13 +3,13 @@ import time
 import random
 from typing import List, Dict, Set, Tuple
 
-# Valor centinela para memoización (un valor no válido)
+#Valor centinela para memoización (un valor no válido)
 SENTINEL = -float('inf') 
 
-# ---
-# Implementación 1: Memoización con Arreglos (Listas)
-# Requerida por la tarea
-# ---
+#---
+#Implementación 1: Memoización con Arreglos (Listas)
+#Requerida por la tarea
+#---
 
 def solve_torta_array(st: List[int]) -> float:
     """
@@ -21,20 +21,20 @@ def solve_torta_array(st: List[int]) -> float:
     if N == 0:
         return 0.0
     
-    # n es la cantidad de porciones en un semicírculo
+    #n es la cantidad de porciones en un semicírculo
     n_pequeno = N // 2
     total_sum = sum(st)
     
-    # memo[i][k] almacena el resultado de dp(i, k)
-    # Tamaño: N * (N+1)
+    #memo[i][k] almacena el resultado de dp(i, k)
+    #Tamaño: N * (N+1)
     memo: List[List[float]] = [[SENTINEL] * (N + 1) for _ in range(N)]
 
-    # El problema original es el bloque completo (índice 0, largo N)
+    #El problema original es el bloque completo (índice 0, largo N)
     net_score = dp_array(0, N, st, memo, N, n_pequeno)
     
-    # Puntuación Neta = (Score Profesor) - (Score Hermana)
-    # Suma Total = (Score Profesor) + (Score Hermana)
-    # Score Profesor = (Neta + Total) / 2
+    #Puntuación Neta = (Score Profesor) - (Score Hermana)
+    #Suma Total = (Score Profesor) + (Score Hermana)
+    #Score Profesor = (Neta + Total) / 2
     return (total_sum + net_score) / 2
 
 def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_pequeno: int) -> float:
@@ -42,30 +42,29 @@ def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_p
     Función recursiva (subproblema) para la memoización con arreglo.
     Calcula la max puntuación neta del bloque contiguo (i, k).
     """
-    # Caso Base 1: Bloque vacío
+    #Caso Base 1: Bloque vacío
     if k == 0:
         return 0.0
     
-    # Caso Base 2: Regla (b), una sola porción [cite: 205]
+    #Caso Base 2: Regla (b), una sola porción [cite: 205]
     if k == 1:
         return float(st[i])
         
-    # Verificar memoización
+    #Verificar memoización
     if memo[i][k] != SENTINEL:
         return memo[i][k]
 
-    # --- Lógica de Transición (Recurrencia) ---
+    #Lógica de Transición (Recurrencia)
     
-    # 1. Identificar los índices del bloque actual (i, k)
+    #1. Identificar los índices del bloque actual (i, k)
     current_block_indices = {(i + m) % N for m in range(k)}
     
     possible_moves = []
     
-    # 2. Iterar sobre TODOS los 2n (N) posibles ángulos de corte alpha_j
+    #2. Iterar sobre TODOS los 2n (N) posibles ángulos de corte alpha_j
     for j in range(N):
         
-        # 3. Validar el corte j según Regla (c.1) [cite: 212]
-        # "al menos una porción... en cada lado"
+        #3. Validar el corte j según Regla (c.1) [cite: 212]
         side1_indices = {(j + m) % N for m in range(1, n_pequeno)}
         side2_indices = {(j + n_pequeno + m) % N for m in range(1, n_pequeno)}
         side1_has_pieces = any(p in current_block_indices for p in side1_indices)
@@ -74,23 +73,23 @@ def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_p
         if side1_has_pieces and side2_has_pieces:
             possible_moves.append(j)
 
-    # Caso Base 3: "Parar de comer" (no hay movimientos válidos)
+    #Caso Base 3: "Parar de comer" (no hay movimientos válidos)
     if not possible_moves:
         memo[i][k] = 0.0
         return 0.0
         
     best_net_score = -float('inf')
 
-    # 4. Probar todos los cortes válidos (j) y aplicar minimax
+    #4. Probar todos los cortes válidos (j) y aplicar minimax
     for j in possible_moves:
         
-        # 4a. Calcular score (Regla c.2: comer semicírculo) [cite: 213]
+        #4a. Calcular score (Regla c.2: comer semicírculo) [cite: 213]
         semicircle_indices = {(j + m) % N for m in range(n_pequeno)}
         
         pieces_to_eat = current_block_indices.intersection(semicircle_indices)
         move_score = sum(st[p] for p in pieces_to_eat)
         
-        # 4b. Identificar el subproblema restante
+        #4b. Identificar el subproblema restante
         remaining_pieces = current_block_indices.difference(pieces_to_eat)
         
         new_i, new_k = 0, 0
@@ -102,20 +101,20 @@ def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_p
                     new_i = p
                     break
         
-        # 4c. Aplicar Minimax: Mi score = (gano ahora) - (gana oponente)
+        #4c. Aplicar Minimax: Mi score = (gano ahora) - (gana oponente)
         opponent_net_score = dp_array(new_i, new_k, st, memo, N, n_pequeno)
         my_net_score = move_score - opponent_net_score
         best_net_score = max(best_net_score, my_net_score)
 
-    # 5. Guardar y retornar el resultado
+    #5. Guardar y retornar el resultado
     memo[i][k] = best_net_score
     return best_net_score
 
 
-# ---
-# Implementación 2: Memoización con Tablas de Hash (Diccionarios)
+#---
+#Implementación 2: Memoización con Tablas de Hash (Diccionarios)
 # Requerida por la tarea
-# ---
+#---
 
 def solve_torta_hash(st: List[int]) -> float:
     """
@@ -129,7 +128,7 @@ def solve_torta_hash(st: List[int]) -> float:
     n_pequeno = N // 2
     total_sum = sum(st)
     
-    # memo[(i, k)] almacena el resultado de dp(i, k)
+    #memo[(i, k)] almacena el resultado de dp(i, k)
     memo: Dict[Tuple[int, int], float] = {}
 
     net_score = dp_hash(0, N, st, memo, N, n_pequeno)
@@ -142,17 +141,17 @@ def dp_hash(i: int, k: int, st: List[int], memo: Dict[Tuple[int, int], float], N
     La lógica es IDÉNTICA a 'dp_array', solo cambia el
     almacenamiento en 'memo'.
     """
-    # Casos Base
+    #Casos Base
     if k == 0:
         return 0.0
     if k == 1:
         return float(st[i])
         
-    # Verificar memoización
+    #Verificar memoización
     if (i, k) in memo:
         return memo[(i, k)]
 
-    # --- Lógica de Transición (Exactamente la misma que antes) ---
+    #Lógica de Transición (Exactamente la misma que antes)
     
     current_block_indices = {(i + m) % N for m in range(k)}
     possible_moves = []
@@ -190,14 +189,14 @@ def dp_hash(i: int, k: int, st: List[int], memo: Dict[Tuple[int, int], float], N
         my_net_score = move_score - opponent_net_score
         best_net_score = max(best_net_score, my_net_score)
 
-    # Guardar y retornar el resultado
+    #Guardar y retornar el resultado
     memo[(i, k)] = best_net_score
     return best_net_score
 
 
-# ---
-# Bloque de Ejecución (Solo para Entrega 1)
-# ---
+#---
+#Bloque de Ejecución
+#---
 if __name__ == "__main__":
     """
     Este bloque SÍ se ejecuta.
@@ -208,20 +207,20 @@ if __name__ == "__main__":
     print("=== Avance Tarea 1: Feliz Cumpleaños ===")
     print("Probando implementación con un caso simple...")
 
-    # n=2, N=4
-    # Un caso de prueba simple para demostrar que el código corre.
+    #n=2, N=4
+    #Un caso de prueba simple para demostrar que el código corre.
     st_test = [10, 1, 1, 10]
     
     print(f"\nDatos de prueba (n=2, N=4): {st_test}")
     
-    # --- Prueba de la versión con Arreglos ---
+    #Prueba de la versión con Arreglos
     try:
         resultado_array = solve_torta_array(st_test)
         print(f"Resultado (Arreglos): {resultado_array}")
     except Exception as e:
         print(f"Error en solve_torta_array: {e}")
 
-    # --- Prueba de la versión con Hash ---
+    #Prueba de la versión con Hash
     try:
         resultado_hash = solve_torta_hash(st_test)
         print(f"Resultado (Hash):     {resultado_hash}")
