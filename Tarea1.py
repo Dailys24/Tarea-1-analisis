@@ -1,3 +1,4 @@
+#Librerias
 import time
 import random
 from typing import List, Dict, Set, Tuple
@@ -40,15 +41,13 @@ def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_p
     """
     Función recursiva (subproblema) para la memoización con arreglo.
     Calcula la max puntuación neta del bloque contiguo (i, k).
-    i = índice de inicio, k = largo del bloque
     """
     # Caso Base 1: Bloque vacío
     if k == 0:
         return 0.0
     
-    # [span_0](start_span)Caso Base 2: Regla (b), una sola porción[span_0](end_span)
+    # Caso Base 2: Regla (b), una sola porción [cite: 205]
     if k == 1:
-        # El jugador actual se la come. Score_neto = st[i] - 0
         return float(st[i])
         
     # Verificar memoización
@@ -65,7 +64,7 @@ def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_p
     # 2. Iterar sobre TODOS los 2n (N) posibles ángulos de corte alpha_j
     for j in range(N):
         
-        # 3. [span_1](start_span)Validar el corte j según Regla (c.1)[span_1](end_span)
+        # 3. Validar el corte j según Regla (c.1) [cite: 212]
         # "al menos una porción... en cada lado"
         side1_indices = {(j + m) % N for m in range(1, n_pequeno)}
         side2_indices = {(j + n_pequeno + m) % N for m in range(1, n_pequeno)}
@@ -85,10 +84,9 @@ def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_p
     # 4. Probar todos los cortes válidos (j) y aplicar minimax
     for j in possible_moves:
         
-        # 4a. [span_2](start_span)Calcular score (Regla c.2: comer semicírculo)[span_2](end_span)
+        # 4a. Calcular score (Regla c.2: comer semicírculo) [cite: 213]
         semicircle_indices = {(j + m) % N for m in range(n_pequeno)}
         
-        # Comemos la intersección del bloque actual y el semicírculo
         pieces_to_eat = current_block_indices.intersection(semicircle_indices)
         move_score = sum(st[p] for p in pieces_to_eat)
         
@@ -98,14 +96,13 @@ def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_p
         new_i, new_k = 0, 0
         if remaining_pieces:
             new_k = len(remaining_pieces)
-            # Encontrar el índice 'i' del nuevo bloque
             new_i = -1
             for p in remaining_pieces:
                 if (p - 1 + N) % N not in remaining_pieces:
                     new_i = p
                     break
         
-        # 4c. Aplicar Minimax
+        # 4c. Aplicar Minimax: Mi score = (gano ahora) - (gana oponente)
         opponent_net_score = dp_array(new_i, new_k, st, memo, N, n_pequeno)
         my_net_score = move_score - opponent_net_score
         best_net_score = max(best_net_score, my_net_score)
@@ -199,46 +196,36 @@ def dp_hash(i: int, k: int, st: List[int], memo: Dict[Tuple[int, int], float], N
 
 
 # ---
-# Bloque Principal de Ejecución (Para Entrega 2)
+# Bloque de Ejecución (Solo para Entrega 1)
 # ---
 if __name__ == "__main__":
+    """
+    Este bloque SÍ se ejecuta.
+    Sirve para demostrar que las funciones están implementadas y corren.
+    No incluye el análisis de tiempos (que es para la Entrega 2).
+    """
     
-    # 1. Prueba simple (para verificar la lógica)
+    print("=== Avance Tarea 1: Feliz Cumpleaños ===")
+    print("Probando implementación con un caso simple...")
+
+    # n=2, N=4
+    # Un caso de prueba simple para demostrar que el código corre.
     st_test = [10, 1, 1, 10]
-    print(f"Prueba simple st={st_test}")
-    print(f"Resultado (Array): {solve_torta_array(st_test)}")
-    print(f"Resultado (Hash):  {solve_torta_hash(st_test)}")
-    print("-" * 60)
-
-    # 2. Análisis experimental (para la Entrega 2 y los gráficos)
-    print("Iniciando análisis experimental (puede tardar)...")
-    print(f"{'n':<5} {'N':<5} {'Tiempo Array (s)':<20} {'Tiempo Hash (s)':<20} {'Resultado'}")
-    print("-" * 60)
-
-    # n=12 (N=24) puede tardar varios segundos/minutos.
-    # n=14 (N=28) puede tardar mucho más. 
-    # Ajusta la lista según el tiempo que tengas para el análisis.
-    valores_n = [2, 4, 6, 8, 10, 12] 
     
-    for n_val in valores_n:
-        N_val = 2 * n_val
-        # Generamos datos aleatorios para la prueba
-        st_random = [random.randint(-10, 10) for _ in range(N_val)]
-        
-        # --- Estrategia con Arreglos ---
-        t_start_array = time.time()
-        r_array = solve_torta_array(st_random)
-        t_end_array = time.time()
-        time_array = t_end_array - t_start_array
-        
-        # --- Estrategia con Hash ---
-        t_start_hash = time.time()
-        r_hash = solve_torta_hash(st_random)
-        t_end_hash = time.time()
-        time_hash = t_end_hash - t_start_hash
-        
-        # Los resultados deben ser idénticos (salvo mínimos errores de flotante)
-        resultado_str = f"{r_array:.2f}"
-        
-        print(f"{n_val:<5} {N_val:<5} {time_array:<20.6f} {time_hash:<20.6f} {resultado_str}")
+    print(f"\nDatos de prueba (n=2, N=4): {st_test}")
+    
+    # --- Prueba de la versión con Arreglos ---
+    try:
+        resultado_array = solve_torta_array(st_test)
+        print(f"Resultado (Arreglos): {resultado_array}")
+    except Exception as e:
+        print(f"Error en solve_torta_array: {e}")
 
+    # --- Prueba de la versión con Hash ---
+    try:
+        resultado_hash = solve_torta_hash(st_test)
+        print(f"Resultado (Hash):     {resultado_hash}")
+    except Exception as e:
+        print(f"Error en solve_torta_hash: {e}")
+
+    print("\nPrueba de ejecución finalizada.")
