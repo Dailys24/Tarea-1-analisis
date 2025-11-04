@@ -1,3 +1,5 @@
+#integrantes: Nicolas Rosales y Angelo González
+
 #Librerias
 import time
 import random
