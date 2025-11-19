@@ -1,232 +1,238 @@
-#integrantes: Nicolas Rosales y Angelo González
+#Integrantes: Nicolas Rosales y Angelo González
 
-#Librerias
+#Librerias necesarias
 import time
 import random
-from typing import List, Dict, Set, Tuple
+import sys
+import matplotlib.pyplot as plt
+from typing import List, Dict, Tuple
 
-#Valor centinela para memoización (un valor no válido)
+#Aumentamos el límite de recursión para soportar la profundidad del árbol en n grandes
+sys.setrecursionlimit(20000)
 SENTINEL = -float('inf') 
 
-#---
-#Implementación 1: Memoización con Arreglos (Listas)
-#Requerida por la tarea
-#---
+#1. Blindaje y validación de entrada
+def validar_entrada(st: List[int]) -> bool:
+    """Valida que la entrada cumpla con las reglas del problema (lista par de enteros)."""
+    try:
+        if not isinstance(st, list):
+            print("Error: La entrada debe ser una lista.")
+            return False
+        if len(st) == 0:
+            print("Error: La lista está vacía.")
+            return False
+        if len(st) % 2 != 0:
+            print(f"Error: El tamaño {len(st)} no es par (se requiere 2n).")
+            return False
+        if not all(isinstance(x, int) for x in st):
+            print("Error: Todos los elementos deben ser enteros.")
+            return False
+        return True
+    except Exception:
+        return False
 
+#2. Estrategia: Arreglos (Matriz)
 def solve_torta_array(st: List[int]) -> float:
-    """
-    Resuelve el problema de la torta usando Programación Dinámica
-    con memoización basada en Arreglos (Listas de Listas).
-    Esta es la primera función requerida para la implementación.
-    """
-    N = len(st)
-    if N == 0:
-        return 0.0
+    if not validar_entrada(st): return 0.0
     
-    #n es la cantidad de porciones en un semicírculo
+    N = len(st)
     n_pequeno = N // 2
     total_sum = sum(st)
     
-    #memo[i][k] almacena el resultado de dp(i, k)
-    #Tamaño: N * (N+1)
+    #Inicializamos la tabla de memoización (Matriz N x N+1)
     memo: List[List[float]] = [[SENTINEL] * (N + 1) for _ in range(N)]
 
-    #El problema original es el bloque completo (índice 0, largo N)
-    net_score = dp_array(0, N, st, memo, N, n_pequeno)
+    #[O]Objetivo (Original):
+    #Calcular el estado inicial: bloque completo que empieza en 0 con largo N
+    #El resultado es la diferencia neta óptima (Puntos Profe - Puntos Hermana)
+    score_neto = dp_array(0, N, st, memo, N, n_pequeno)
     
-    #Puntuación Neta = (Score Profesor) - (Score Hermana)
-    #Suma Total = (Score Profesor) + (Score Hermana)
-    #Score Profesor = (Neta + Total) / 2
-    return (total_sum + net_score) / 2
+    #Recuperamos el puntaje total del profesor usando álgebra simple:
+    #Profe = (Total + Neto) / 2
+    return (total_sum + score_neto) / 2
 
 def dp_array(i: int, k: int, st: List[int], memo: List[List[float]], N: int, n_pequeno: int) -> float:
     """
-    Función recursiva (subproblema) para la memoización con arreglo.
-    Calcula la max puntuación neta del bloque contiguo (i, k).
+    [S]Subproblema: dp(i, k)
+    Calcula la máxima puntuación neta garantizada para el jugador actual,
+    dado un bloque contiguo de 'k' porciones comenzando en el índice 'i'
     """
-    #Caso Base 1: Bloque vacío
-    if k == 0:
-        return 0.0
     
-    #Caso Base 2: Regla (b), una sola porción [cite: 205]
-    if k == 1:
-        return float(st[i])
-        
-    #Verificar memoización
-    if memo[i][k] != SENTINEL:
-        return memo[i][k]
+    #[B]Casos base (Bottom)
+    if k == 0: return 0.0               #Bloque vacío -> 0 puntos
+    if k == 1: return float(st[i])      #Una porción -> Me la como
+    
+    #Verificación de Memoización (Evita re-cálculo)
+    if memo[i][k] != SENTINEL: return memo[i][k]
 
-    #Lógica de Transición (Recurrencia)
+    #Identificamos qué porciones están disponibles en este bloque (i, k)
+    indices_bloque = {(i + m) % N for m in range(k)}
+    movimientos_validos = []
     
-    #1. Identificar los índices del bloque actual (i, k)
-    current_block_indices = {(i + m) % N for m in range(k)}
-    
-    possible_moves = []
-    
-    #2. Iterar sobre TODOS los 2n (N) posibles ángulos de corte alpha_j
+    #[T]Tiempo de transición: Iteramos O(N) posibles cortes
     for j in range(N):
+        #Regla (c.1): Un ángulo es válido si hay porciones a AMBOS lados de la línea
+        lado1 = {(j + m) % N for m in range(1, n_pequeno)}
+        lado2 = {(j + n_pequeno + m) % N for m in range(1, n_pequeno)}
         
-        #3. Validar el corte j según Regla (c.1) [cite: 212]
-        side1_indices = {(j + m) % N for m in range(1, n_pequeno)}
-        side2_indices = {(j + n_pequeno + m) % N for m in range(1, n_pequeno)}
-        side1_has_pieces = any(p in current_block_indices for p in side1_indices)
-        side2_has_pieces = any(p in current_block_indices for p in side2_indices)
-        
-        if side1_has_pieces and side2_has_pieces:
-            possible_moves.append(j)
+        #Verificamos intersección: ¿Hay piezas del bloque actual en ambos lados?
+        if not indices_bloque.isdisjoint(lado1) and \
+           not indices_bloque.isdisjoint(lado2):
+            movimientos_validos.append(j)
 
-    #Caso Base 3: "Parar de comer" (no hay movimientos válidos)
-    if not possible_moves:
+    #[B]Caso base adicional: "Parar de comer"
+    if not movimientos_validos:
         memo[i][k] = 0.0
         return 0.0
         
-    best_net_score = -float('inf')
+    mejor_neto = -float('inf')
 
-    #4. Probar todos los cortes válidos (j) y aplicar minimax
-    for j in possible_moves:
+    #[R]Relación de recurrencia
+    #Probamos cada corte válido y aplicamos Minimax
+    for j in movimientos_validos:
+        #Regla (c.2): Comer semicírculo
+        semicirculo = {(j + m) % N for m in range(n_pequeno)}
         
-        #4a. Calcular score (Regla c.2: comer semicírculo) [cite: 213]
-        semicircle_indices = {(j + m) % N for m in range(n_pequeno)}
+        #Calculamos ganancia inmediata (intersección de lo disponible y el semicírculo)
+        piezas_a_comer = indices_bloque.intersection(semicirculo)
+        ganancia_actual = sum(st[p] for p in piezas_a_comer)
         
-        pieces_to_eat = current_block_indices.intersection(semicircle_indices)
-        move_score = sum(st[p] for p in pieces_to_eat)
+        #Calculamos el estado resultante para el oponente
+        piezas_restantes = indices_bloque.difference(piezas_a_comer)
         
-        #4b. Identificar el subproblema restante
-        remaining_pieces = current_block_indices.difference(pieces_to_eat)
-        
-        new_i, new_k = 0, 0
-        if remaining_pieces:
-            new_k = len(remaining_pieces)
-            new_i = -1
-            for p in remaining_pieces:
-                if (p - 1 + N) % N not in remaining_pieces:
-                    new_i = p
+        nuevo_i, nuevo_k = 0, 0
+        if piezas_restantes:
+            nuevo_k = len(piezas_restantes)
+            #Buscamos el inicio del nuevo bloque (índice cuyo anterior no está)
+            for p in piezas_restantes:
+                if (p - 1 + N) % N not in piezas_restantes:
+                    nuevo_i = p
                     break
         
-        #4c. Aplicar Minimax: Mi score = (gano ahora) - (gana oponente)
-        opponent_net_score = dp_array(new_i, new_k, st, memo, N, n_pequeno)
-        my_net_score = move_score - opponent_net_score
-        best_net_score = max(best_net_score, my_net_score)
+        #Llamada Recursiva: ¿Cuánto ganará el oponente en su turno?
+        neto_oponente = dp_array(nuevo_i, nuevo_k, st, memo, N, n_pequeno)
+        
+        #Lógica Minimax: Mi Neto = Lo que gano - Lo que gana el oponente
+        mejor_neto = max(mejor_neto, ganancia_actual - neto_oponente)
 
-    #5. Guardar y retornar el resultado
-    memo[i][k] = best_net_score
-    return best_net_score
+    #Guardamos y retornamos
+    memo[i][k] = mejor_neto
+    return mejor_neto
 
-
-#---
-#Implementación 2: Memoización con Tablas de Hash (Diccionarios)
-# Requerida por la tarea
-#---
-
+#3. Estrategia: Hash (Diccionario)
 def solve_torta_hash(st: List[int]) -> float:
-    """
-    Resuelve el problema de la torta usando Programación Dinámica
-    con memoización basada en Tablas de Hash (Diccionarios).
-    """
+    if not validar_entrada(st): return 0.0
     N = len(st)
-    if N == 0:
-        return 0.0
-    
     n_pequeno = N // 2
     total_sum = sum(st)
     
-    #memo[(i, k)] almacena el resultado de dp(i, k)
+    #Inicializamos diccionario vacío
     memo: Dict[Tuple[int, int], float] = {}
 
-    net_score = dp_hash(0, N, st, memo, N, n_pequeno)
-    
-    return (total_sum + net_score) / 2
+    score_neto = dp_hash(0, N, st, memo, N, n_pequeno)
+    return (total_sum + score_neto) / 2
 
 def dp_hash(i: int, k: int, st: List[int], memo: Dict[Tuple[int, int], float], N: int, n_pequeno: int) -> float:
-    """
-    Función recursiva (subproblema) para la memoización con hash.
-    La lógica es IDÉNTICA a 'dp_array', solo cambia el
-    almacenamiento en 'memo'.
-    """
-    #Casos Base
-    if k == 0:
-        return 0.0
-    if k == 1:
-        return float(st[i])
-        
-    #Verificar memoización
-    if (i, k) in memo:
-        return memo[(i, k)]
+    #[S]Subproblema (Misma lógica, distinto almacenamiento)
+    
+    #[B]Casos base
+    if k == 0: return 0.0
+    if k == 1: return float(st[i])
+    if (i, k) in memo: return memo[(i, k)]
 
-    #Lógica de Transición (Exactamente la misma que antes)
+    indices_bloque = {(i + m) % N for m in range(k)}
+    movimientos_validos = []
     
-    current_block_indices = {(i + m) % N for m in range(k)}
-    possible_moves = []
-    
+    #Validación de cortes
     for j in range(N):
-        side1_indices = {(j + m) % N for m in range(1, n_pequeno)}
-        side2_indices = {(j + n_pequeno + m) % N for m in range(1, n_pequeno)}
-        side1_has_pieces = any(p in current_block_indices for p in side1_indices)
-        side2_has_pieces = any(p in current_block_indices for p in side2_indices)
-        if side1_has_pieces and side2_has_pieces:
-            possible_moves.append(j)
+        lado1 = {(j + m) % N for m in range(1, n_pequeno)}
+        lado2 = {(j + n_pequeno + m) % N for m in range(1, n_pequeno)}
+        
+        if not indices_bloque.isdisjoint(lado1) and \
+           not indices_bloque.isdisjoint(lado2):
+            movimientos_validos.append(j)
 
-    if not possible_moves:
+    if not movimientos_validos:
         memo[(i, k)] = 0.0
         return 0.0
         
-    best_net_score = -float('inf')
+    mejor_neto = -float('inf')
 
-    for j in possible_moves:
-        semicircle_indices = {(j + m) % N for m in range(n_pequeno)}
-        pieces_to_eat = current_block_indices.intersection(semicircle_indices)
-        move_score = sum(st[p] for p in pieces_to_eat)
-        remaining_pieces = current_block_indices.difference(pieces_to_eat)
+    #[R]Recurrencia
+    for j in movimientos_validos:
+        semicirculo = {(j + m) % N for m in range(n_pequeno)}
+        piezas_a_comer = indices_bloque.intersection(semicirculo)
+        ganancia_actual = sum(st[p] for p in piezas_a_comer)
         
-        new_i, new_k = 0, 0
-        if remaining_pieces:
-            new_k = len(remaining_pieces)
-            new_i = -1
-            for p in remaining_pieces:
-                if (p - 1 + N) % N not in remaining_pieces:
-                    new_i = p
+        piezas_restantes = indices_bloque.difference(piezas_a_comer)
+        
+        nuevo_i, nuevo_k = 0, 0
+        if piezas_restantes:
+            nuevo_k = len(piezas_restantes)
+            for p in piezas_restantes:
+                if (p - 1 + N) % N not in piezas_restantes:
+                    nuevo_i = p
                     break
         
-        opponent_net_score = dp_hash(new_i, new_k, st, memo, N, n_pequeno)
-        my_net_score = move_score - opponent_net_score
-        best_net_score = max(best_net_score, my_net_score)
+        neto_oponente = dp_hash(nuevo_i, nuevo_k, st, memo, N, n_pequeno)
+        mejor_neto = max(mejor_neto, ganancia_actual - neto_oponente)
 
-    #Guardar y retornar el resultado
-    memo[(i, k)] = best_net_score
-    return best_net_score
+    memo[(i, k)] = mejor_neto
+    return mejor_neto
 
-
-#---
-#Bloque de Ejecución
-#---
+#4. Experimentos y gráficos
 if __name__ == "__main__":
-    """
-    Este bloque SÍ se ejecuta.
-    Sirve para demostrar que las funciones están implementadas y corren.
-    No incluye el análisis de tiempos (que es para la Entrega 2).
-    """
-    
-    print("=== Avance Tarea 1: Feliz Cumpleaños ===")
-    print("Probando implementación con un caso simple...")
+    print("\n" + "="*60)
+    print("TAREA 2: FELIZ CUMPLEAÑOS (CODIGO DOCUMENTADO SRTBOT)")
+    print("="*60)
 
-    #n=2, N=4
-    #Un caso de prueba simple para demostrar que el código corre.
-    st_test = [10, 1, 1, 10]
+    #1. Verificación caso pdf
+    st_pdf = [7, 8, 2, 3, 1, 1, 5, 6]
+    print(f"\n[1] Verificación PDF. Entrada: {st_pdf}")
+    res = solve_torta_array(st_pdf)
+    print(f"Resultado: {res} -> " + ("CORRECTO ✅" if res == 27.0 else "INCORRECTO ❌"))
+
+    #2. Análisis experimental
+    print("\n[2] Generando datos y gráfico...")
+    valores_n = [2, 4, 6, 8, 10, 12, 14]
+    tiempos_array = []
+    tiempos_hash = []
     
-    print(f"\nDatos de prueba (n=2, N=4): {st_test}")
-    
-    #Prueba de la versión con Arreglos
+    print(f"{'n':<5} {'N':<5} {'Array(s)':<12} {'Hash(s)':<12}")
+    print("-" * 40)
+
+    for n_val in valores_n:
+        N_val = 2 * n_val
+        st = [random.randint(1, 10) for _ in range(N_val)]
+        
+        #Medir Array
+        t0 = time.perf_counter()
+        solve_torta_array(st)
+        dt_array = time.perf_counter() - t0
+        tiempos_array.append(dt_array)
+        
+        #Medir Hash
+        t0 = time.perf_counter()
+        solve_torta_hash(st)
+        dt_hash = time.perf_counter() - t0
+        tiempos_hash.append(dt_hash)
+        
+        print(f"{n_val:<5} {N_val:<5} {dt_array:<12.5f} {dt_hash:<12.5f}")
+
+    #3. Gráfico
     try:
-        resultado_array = solve_torta_array(st_test)
-        print(f"Resultado (Arreglos): {resultado_array}")
+        plt.figure(figsize=(10, 6))
+        plt.plot(valores_n, tiempos_array, marker='o', label='Arreglos (Matriz)', color='blue')
+        plt.plot(valores_n, tiempos_hash, marker='s', label='Hash (Dict)', color='red', linestyle='--')
+        
+        plt.title(r'Comparación de Tiempos: Arreglos vs Hash ($O(n^4)$)')
+        plt.xlabel('Valor de n (Semicírculos)')
+        plt.ylabel('Tiempo (segundos)')
+        plt.legend()
+        plt.grid(True)
+        
+        plt.savefig('grafico_tiempos_final.png')
+        print("\n>> Gráfico 'grafico_tiempos_final.png' generado correctamente.")
+        plt.show()
     except Exception as e:
-        print(f"Error en solve_torta_array: {e}")
-
-    #Prueba de la versión con Hash
-    try:
-        resultado_hash = solve_torta_hash(st_test)
-        print(f"Resultado (Hash):     {resultado_hash}")
-    except Exception as e:
-        print(f"Error en solve_torta_hash: {e}")
-
-    print("\nPrueba de ejecución finalizada.")
+        print(f"\nNo se pudo generar el gráfico: {e}")
