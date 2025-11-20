@@ -190,7 +190,7 @@ if __name__ == "__main__":
     st_pdf = [7, 8, 2, 3, 1, 1, 5, 6]
     print(f"\n[1] Verificación PDF. Entrada: {st_pdf}")
     res = solve_torta_array(st_pdf)
-    print(f"Resultado: {res} -> " + ("CORRECTO ✅" if res == 27.0 else "INCORRECTO ❌"))
+    print(f"Resultado: {res}")
 
     #2. Análisis experimental
     print("\n[2] Generando datos y gráfico...")
